@@ -1,6 +1,9 @@
 package docker
 
-import "github.com/c-bata/go-prompt"
+import (
+	"github.com/c-bata/go-prompt"
+	"github.com/gohumble/docker-promt/pkg/docker/options"
+)
 
 var optionHelp = []prompt.Suggest{
 	{Text: "-h"},
@@ -19,8 +22,17 @@ func optionCompleter(args []string, long bool) []prompt.Suggest {
 	var suggests []prompt.Suggest
 	commandArgs, _ := excludeOptions(args)
 	switch commandArgs[0] {
+	case "build":
+		suggests = options.Build
 	case "exec":
-		suggests = execOptions
+		suggests = options.Exec
+	case "run":
+		suggests = options.Run
+	case "info":
+		suggests = options.Info
+	case "cp":
+		suggests = options.Cp
+
 	}
 	return suggests
 }

@@ -1,46 +1,74 @@
 package docker
 
 import (
-	"fmt"
 	"github.com/c-bata/go-prompt"
-	"os/exec"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 	"strings"
 )
 
-func NewCompleter() (*Completer, error) {
-	cmd := exec.Command("/bin/sh", "-c", "docker images")
-	out, err := cmd.CombinedOutput()
-
-	if err != nil {
-		return nil, err
-	}
-	imageRawlines := strings.Split(string(out), "\n")
-	images := make([]Image, 0)
-	for index, value := range imageRawlines {
-		if index == 0 {
-			continue
-		}
-		i := Image{}
-		imagesRawCol := strings.Fields(value)
-		if len(imagesRawCol) > 0 {
-			i.repository = imagesRawCol[0]
-			i.tag = imagesRawCol[1]
-			i.imageId = imagesRawCol[2]
-			i.size = imagesRawCol[6]
-		}
-		images = append(images, i)
-
-	}
-	return &Completer{
-		images: images,
-	}, nil
+type Completer struct {
+	Suggestions   []prompt.Suggest
+	docker        *client.Client
+	dockerWatcher Watcher
+	containers    []types.Container
+	images        []types.ImageSummary
 }
 
-func (c *Completer) getImagesSuggestions() []prompt.Suggest {
-	s := make([]prompt.Suggest, len(c.images))
-	for i := range c.images {
-		s[i] = prompt.Suggest{
-			Text: c.images[i].imageId, Description: c.images[0].repository,
+func NewCompleter() (*Completer, error) {
+	dockerClient, err := client.NewEnvClient()
+	if err != nil {
+		panic(err)
+	}
+
+	completer := &Completer{
+		dockerWatcher: NewWatcher(dockerClient),
+		docker:        dockerClient,
+		Suggestions:   make([]prompt.Suggest, 0),
+	}
+
+	completer.watchForChanges()
+	return completer, nil
+}
+
+func (c *Completer) watchForChanges() {
+	c.dockerWatcher.Start(c)
+}
+func (c *Completer) Complete(d prompt.Document) []prompt.Suggest {
+	cursorPrefix := d.TextBeforeCursor()
+	if cursorPrefix == "" {
+		return []prompt.Suggest{}
+	}
+
+	args := strings.Split(d.TextBeforeCursor(), " ")
+
+	w := d.GetWordBeforeCursor()
+	// If word before the cursor starts with "-", returns CLI flag options.
+	if strings.HasPrefix(w, "-") {
+		return optionCompleter(args, strings.HasPrefix(w, "--"))
+	}
+	if len(args) > 1 && len(w) > 1 {
+		go c.dockerWatcher.Search(args[1])
+	}
+	// If PIPE is in text before the cursor, returns empty suggestions.
+	for i := range args {
+		if args[i] == "|" {
+			return []prompt.Suggest{}
+		}
+	}
+
+	return c.argumentsCompleter(args, d)
+}
+
+func (c Completer) getImagesSuggestions(filter string) []prompt.Suggest {
+	s := make([]prompt.Suggest, 0)
+	for _, value := range c.images {
+		id := formatImageId(value.ID)
+		desc := formatImageDescription(value)
+		if strings.Contains(id, filter) {
+			s = append(s, prompt.Suggest{
+				Text: id, Description: desc,
+			})
 		}
 	}
 	return s
@@ -64,42 +92,17 @@ func getExecFirstOptionSuggestions() []prompt.Suggest {
 		{Text: "-i", Description: "interactive mode"},
 	}
 }
-func getPsSuggestions() []prompt.Suggest {
-	cmd := exec.Command("/bin/sh", "-c", "docker ps ")
-	out, err := cmd.CombinedOutput()
 
-	if err != nil {
-		return nil
-	}
-	psRawlines := strings.Split(string(out), "\n")
-	ps := make([]Ps, 0)
-	for index, value := range psRawlines {
-		if index == 0 {
-			continue
-		}
-		i := Ps{}
-		psRawCol := strings.Fields(value)
-		if len(psRawCol) > 0 {
-			i.containerId = psRawCol[0]
-			i.image = psRawCol[1]
-			i.names = psRawCol[10] + fmt.Sprintf(" | created %s %s ago", psRawCol[3], psRawCol[4])
-		}
-		ps = append(ps, i)
-
-	}
-	s := make([]prompt.Suggest, len(ps))
-	for i := range ps {
-		s[i] = prompt.Suggest{
-			Text: ps[i].containerId, Description: ps[i].names,
+func (c *Completer) getContainerSuggestions() []prompt.Suggest {
+	s := make([]prompt.Suggest, len(c.containers))
+	for key, value := range c.containers {
+		s[key] = prompt.Suggest{
+			Text: value.Image, Description: value.State,
 		}
 	}
 	return s
 }
 
-type Completer struct {
-	images []Image
-	ps     []Ps
-}
 type Image struct {
 	repository string
 	tag        string
@@ -113,26 +116,6 @@ type Ps struct {
 	names       string
 }
 
-func (c *Completer) Complete(d prompt.Document) []prompt.Suggest {
-	if d.TextBeforeCursor() == "" {
-		return []prompt.Suggest{}
-	}
-	args := strings.Split(d.TextBeforeCursor(), " ")
-
-	w := d.GetWordBeforeCursor()
-	// If word before the cursor starts with "-", returns CLI flag options.
-	if strings.HasPrefix(w, "-") {
-		return optionCompleter(args, strings.HasPrefix(w, "--"))
-	}
-	// If PIPE is in text before the cursor, returns empty suggestions.
-	for i := range args {
-		if args[i] == "|" {
-			return []prompt.Suggest{}
-		}
-	}
-
-	return c.argumentsCompleter(args)
-}
 func excludeOptions(args []string) ([]string, bool) {
 	l := len(args)
 	if l == 0 {

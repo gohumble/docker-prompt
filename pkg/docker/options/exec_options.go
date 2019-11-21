@@ -1,8 +1,8 @@
-package docker
+package options
 
 import "github.com/c-bata/go-prompt"
 
-var execOptions = []prompt.Suggest{
+var Exec = []prompt.Suggest{
 	{Text: "-it", Description: "lets go mode"},
 	{Text: "-e", Description: "Set environment variables"},
 	{Text: "-d", Description: "Detached mode: run command in the background"},
