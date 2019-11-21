@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/c-bata/go-prompt"
-	"github.com/c-bata/go-prompt/completer"
 	"github.com/gohumble/docker-promt/pkg/docker"
+	"github.com/gohumble/go-prompt"
+	"github.com/gohumble/go-prompt/completer"
 )
 
 var (
@@ -22,9 +22,9 @@ func main() {
 	p := prompt.New(
 		docker.Executor,
 		c.Complete,
-		prompt.OptionTitle("docker-prompt: interactive kubernetes client"),
-		prompt.OptionPrefix(">>> "),
-		prompt.OptionInputTextColor(prompt.Turquoise),
+		prompt.OptionTitle("docker-prompt: interactive docker shell"),
+		prompt.OptionPrefix("§ "),
+		prompt.OptionInputTextColor(prompt.DefaultColor),
 		prompt.OptionCompletionWordSeparator(completer.FilePathCompletionSeparator),
 	)
 	p.Run()

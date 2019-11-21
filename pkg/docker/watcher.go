@@ -6,6 +6,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
+	"sync"
 	"time"
 )
 
@@ -13,16 +14,17 @@ import (
 type Watcher struct {
 	client           *client.Client
 	searchResultChan chan []registry.SearchResult
+	mux              *sync.Mutex
+	searching        bool
 }
 
 // creates a Watcher and starts watching docker for changes.
 func NewWatcher(dockerClient *client.Client) Watcher {
 	w := Watcher{client: dockerClient,
-		searchResultChan: make(chan []registry.SearchResult, 1)}
-
+		searchResultChan: make(chan []registry.SearchResult, 1),
+		mux:              &sync.Mutex{}}
 	return w
 }
-
 func (w *Watcher) ClearSearch() {
 	if len(w.searchResultChan) > 0 {
 		for range <-w.searchResultChan {
@@ -31,12 +33,21 @@ func (w *Watcher) ClearSearch() {
 
 }
 func (w *Watcher) Search(q string) {
-	w.ClearSearch()
-	res, err := w.client.ImageSearch(context.Background(), q, types.ImageSearchOptions{Limit: 5})
-	if err != nil {
-		fmt.Println(err)
+	if !w.searching {
+		w.mux.Lock()
+		w.searching = true
+		w.mux.Unlock()
+		//w.ClearSearch()
+		res, _ := w.client.ImageSearch(context.Background(), q, types.ImageSearchOptions{Limit: 3})
+		w.mux.Lock()
+		w.searching = false
+
+		w.searchResultChan <- res
+		w.mux.Unlock()
+		fmt.Println("search")
+
 	}
-	w.searchResultChan <- res
+
 }
 func (w Watcher) Start(completer *Completer) {
 	go func() {

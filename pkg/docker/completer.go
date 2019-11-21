@@ -1,14 +1,16 @@
 package docker
 
 import (
-	"github.com/c-bata/go-prompt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/gohumble/docker-promt/pkg/docker/options"
+	"github.com/gohumble/go-prompt"
 	"strings"
 )
 
 type Completer struct {
 	Suggestions   []prompt.Suggest
+	LastWord      string
 	docker        *client.Client
 	dockerWatcher Watcher
 	containers    []types.Container
@@ -37,41 +39,67 @@ func (c *Completer) watchForChanges() {
 func (c *Completer) Complete(d prompt.Document) []prompt.Suggest {
 	cursorPrefix := d.TextBeforeCursor()
 	if cursorPrefix == "" {
-		return []prompt.Suggest{}
+		c.Suggestions = []prompt.Suggest{}
+		return c.Suggestions
 	}
 
 	args := strings.Split(d.TextBeforeCursor(), " ")
 
 	w := d.GetWordBeforeCursor()
+	if len(args) > 1 && len(w) > 1 {
+		//		SearchGroup.Do(w, c.Search())
+		go c.dockerWatcher.Search(w)
+	}
+	if c.LastWord == w {
+		return c.Suggestions
+	}
+
 	// If word before the cursor starts with "-", returns CLI flag options.
 	if strings.HasPrefix(w, "-") {
-		return optionCompleter(args, strings.HasPrefix(w, "--"))
+		c.Suggestions = options.Completer(args, strings.HasPrefix(w, "--"))
+		return c.Suggestions
 	}
-	if len(args) > 1 && len(w) > 1 {
-		go c.dockerWatcher.Search(args[1])
-	}
+
 	// If PIPE is in text before the cursor, returns empty suggestions.
 	for i := range args {
 		if args[i] == "|" {
-			return []prompt.Suggest{}
+			c.Suggestions = []prompt.Suggest{}
+			return c.Suggestions
 		}
 	}
 
-	return c.argumentsCompleter(args, d)
+	c.Suggestions = c.CommandCompleter(args, d, w)
+	c.LastWord = w
+
+	return c.Suggestions
+}
+func (c *Completer) Search() func() (result interface{}, err error) {
+	return func() (interface{}, error) {
+		go c.dockerWatcher.Search(c.LastWord)
+		return nil, nil
+	}
 }
 
 func (c Completer) getImagesSuggestions(filter string) []prompt.Suggest {
 	s := make([]prompt.Suggest, 0)
-	for _, value := range c.images {
-		id := formatImageId(value.ID)
-		desc := formatImageDescription(value)
-		if strings.Contains(id, filter) {
-			s = append(s, prompt.Suggest{
-				Text: id, Description: desc,
-			})
+	if !strings.Contains(filter, "-") {
+		for _, value := range c.images {
+			id := formatImageId(value.ID)
+			desc := formatImageDescription(value)
+			if strings.Contains(id, filter) {
+				s = append(s, prompt.Suggest{
+					Text: id, Description: desc,
+				})
+			}
 		}
 	}
 	return s
+}
+func getTerminalSuggestions() []prompt.Suggest {
+	return []prompt.Suggest{
+		{Text: "/bin/sh", Description: "sh"},
+		{Text: "/bin/bash", Description: "bash"},
+	}
 }
 func getExecSampleCommandsSuggestions() []prompt.Suggest {
 	return []prompt.Suggest{
@@ -101,66 +129,4 @@ func (c *Completer) getContainerSuggestions() []prompt.Suggest {
 		}
 	}
 	return s
-}
-
-type Image struct {
-	repository string
-	tag        string
-	imageId    string
-	created    string
-	size       string
-}
-type Ps struct {
-	containerId string
-	image       string
-	names       string
-}
-
-func excludeOptions(args []string) ([]string, bool) {
-	l := len(args)
-	if l == 0 {
-		return nil, false
-	}
-	cmd := args[0]
-	filtered := make([]string, 0, l)
-
-	var skipNextArg bool
-	for i := 0; i < len(args); i++ {
-		if skipNextArg {
-			skipNextArg = false
-			continue
-		}
-
-		if cmd == "logs" && args[i] == "-f" {
-			continue
-		}
-
-		for _, s := range []string{
-			"-f", "--filename",
-			"-n", "--namespace",
-			"-s", "--server",
-			"--kubeconfig",
-			"--cluster",
-			"--user",
-			"-o", "--output",
-			"-c",
-			"--container",
-		} {
-			if strings.HasPrefix(args[i], s) {
-				if strings.Contains(args[i], "=") {
-					// we can specify option value like '-o=json'
-					skipNextArg = false
-				} else {
-					skipNextArg = true
-				}
-				continue
-			}
-		}
-		if strings.HasPrefix(args[i], "-") {
-			continue
-		}
-
-		filtered = append(filtered, args[i])
-	}
-	return filtered, skipNextArg
 }
