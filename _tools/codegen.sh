@@ -1,4 +1,5 @@
 #!/bin/bash
+# Important : always run this file from root of project.
 
 DIR=$(cd $(dirname $0); pwd)
 DOCKER_DIR=$(cd $(dirname $(dirname $0)); pwd)/pkg/docker/options
@@ -9,7 +10,7 @@ mkdir -p bin
 
 set -e
 
-go build -o ${DIR}/pkg/gen/bin/option-gen ${DIR}/pkg/gen/main.go
+go build -o ./bin/option-gen ./_tools/option-gen/main.go
 
 subcmds=(
     "run"
@@ -76,6 +77,6 @@ subcmds=(
 for cmd in "${subcmds[@]}"; do
   camelized=`echo ${cmd} | gsed -r 's/[- ](.)/\U\1\E/g'`
   snaked=`echo ${cmd} | gsed -r 's/[- ]/_/g'`
-  docker ${cmd} --help | ${DIR}/pkg/gen/bin/option-gen -o ${DOCKER_DIR}/option_${snaked}.gen.go -var ${camelized}
+  docker ${cmd} --help | ./bin/option-gen -o ${DOCKER_DIR}/option_${snaked}.gen.go -var ${camelized}
   goimports -w ${DOCKER_DIR}/option_${snaked}.gen.go
 done
