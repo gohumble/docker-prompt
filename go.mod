@@ -1,4 +1,4 @@
-module github.com/gohumble/docker-promt
+module github.com/gohumble/docker-prompt
 
 go 1.13
 
