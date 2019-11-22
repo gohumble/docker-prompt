@@ -3,7 +3,7 @@ package docker
 import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/gohumble/docker-promt/pkg/docker/options"
+	"github.com/gohumble/docker-prompt/pkg/docker/options"
 	"github.com/gohumble/go-prompt"
 	"strings"
 )

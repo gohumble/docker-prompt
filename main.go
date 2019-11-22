@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/gohumble/docker-promt/pkg/docker"
+	"github.com/gohumble/docker-prompt/pkg/docker"
 	"github.com/gohumble/go-prompt"
 	"github.com/gohumble/go-prompt/completer"
 )

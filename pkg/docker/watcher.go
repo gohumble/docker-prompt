@@ -2,7 +2,6 @@ package docker
 
 import (
 	"context"
-	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
@@ -41,13 +40,9 @@ func (w *Watcher) Search(q string) {
 		res, _ := w.client.ImageSearch(context.Background(), q, types.ImageSearchOptions{Limit: 3})
 		w.mux.Lock()
 		w.searching = false
-
 		w.searchResultChan <- res
 		w.mux.Unlock()
-		fmt.Println("search")
-
 	}
-
 }
 func (w Watcher) Start(completer *Completer) {
 	go func() {
