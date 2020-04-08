@@ -1,16 +1,18 @@
 package docker
 
 import (
+	"fmt"
+	"github.com/c-bata/go-prompt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/gohumble/docker-prompt/pkg/docker/options"
-	"github.com/gohumble/go-prompt"
 	"strings"
 )
 
 type Completer struct {
 	Suggestions   []prompt.Suggest
 	LastWord      string
+	client        *client.Client
 	docker        *client.Client
 	dockerWatcher Watcher
 	containers    []types.Container
@@ -36,8 +38,13 @@ func NewCompleter() (*Completer, error) {
 func (c *Completer) watchForChanges() {
 	c.dockerWatcher.Start(c)
 }
-func (c *Completer) Complete(d prompt.Document) []prompt.Suggest {
+func (c *Completer) Do(d prompt.Document) []prompt.Suggest {
+	k := d.LastKeyStroke()
+	if k == prompt.ControlC {
+		fmt.Printf("backspace dawg")
+	}
 	cursorPrefix := d.TextBeforeCursor()
+	d.CursorPositionCol()
 	if cursorPrefix == "" {
 		c.Suggestions = []prompt.Suggest{}
 		return c.Suggestions

@@ -1,9 +1,9 @@
 package docker
 
 import (
+	"github.com/c-bata/go-prompt"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/gohumble/docker-prompt/pkg/docker/options"
-	"github.com/gohumble/go-prompt"
 )
 
 var commands = []prompt.Suggest{
@@ -60,13 +60,9 @@ func (c *Completer) CommandCompleter(args []string, d prompt.Document, currentWo
 			if len(sug) > 0 {
 				return sug
 			} else {
-				if len(args[len(args)-1]) > 1 {
-					//					go c.dockerWatcher.Search(currentWord)
-					select {
-					case searchResult := <-c.dockerWatcher.searchResultChan:
-						c.Suggestions = searchResultArguments(searchResult)
-					default:
-					}
+				select {
+				case searchResult := <-c.dockerWatcher.searchResultChan:
+					c.Suggestions = searchResultArguments(searchResult)
 				}
 			}
 			return c.Suggestions

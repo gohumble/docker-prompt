@@ -36,17 +36,20 @@ func round(val float64, roundOn float64, places int) (newVal float64) {
 }
 
 func formatImageDescription(sum types.ImageSummary) string {
-	builder := strings.Builder{}
-	builder.WriteString(convertBytes(sum.Size))
-	builder.WriteString(" | created at ")
-	builder.WriteString(strings.Split(time.Unix(sum.Created, 0).String(), " +")[0])
-	builder.WriteString(" | ")
-	if sum.RepoTags[0] == "<none>:<none>" {
-		builder.WriteString("<none>")
-	} else {
-		builder.WriteString(sum.RepoTags[0])
+	if len(sum.RepoTags) > 0 {
+		builder := strings.Builder{}
+		builder.WriteString(convertBytes(sum.Size))
+		builder.WriteString(" | created at ")
+		builder.WriteString(strings.Split(time.Unix(sum.Created, 0).String(), " +")[0])
+		builder.WriteString(" | ")
+		if sum.RepoTags[0] == "<none>:<none>" {
+			builder.WriteString("<none>")
+		} else {
+			builder.WriteString(sum.RepoTags[0])
+		}
+		return builder.String()
 	}
-	return builder.String()
+	return ""
 }
 func formatImageId(s string) string {
 	id := strings.SplitAfter(s, ":")

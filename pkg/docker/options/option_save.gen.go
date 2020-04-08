@@ -3,7 +3,7 @@
 package options
 
 import (
-	prompt "github.com/gohumble/go-prompt"
+	prompt "github.com/c-bata/go-prompt"
 )
 
 var Save = []prompt.Suggest{}
