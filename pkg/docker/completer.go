@@ -53,10 +53,13 @@ func (c *Completer) Do(d prompt.Document) []prompt.Suggest {
 	args := strings.Split(d.TextBeforeCursor(), " ")
 
 	w := d.GetWordBeforeCursor()
-	if len(args) > 1 && len(w) > 1 {
-		//		SearchGroup.Do(w, c.Search())
-		go c.dockerWatcher.Search(w)
+	if !c.dockerWatcher.searching {
+		if len(args) > 1 && len(w) > 1 && k != prompt.Backspace {
+			//		SearchGroup.Do(w, c.Search())
+			go c.dockerWatcher.Search(w)
+		}
 	}
+
 	if c.LastWord == w {
 		return c.Suggestions
 	}

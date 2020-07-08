@@ -63,6 +63,9 @@ func (c *Completer) CommandCompleter(args []string, d prompt.Document, currentWo
 				select {
 				case searchResult := <-c.dockerWatcher.searchResultChan:
 					c.Suggestions = searchResultArguments(searchResult)
+				default:
+					c.Suggestions = make([]prompt.Suggest, 0)
+					c.Suggestions = append(c.Suggestions, prompt.Suggest{Text: "searching..."})
 				}
 			}
 			return c.Suggestions

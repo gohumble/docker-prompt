@@ -20,7 +20,7 @@ type Watcher struct {
 // creates a Watcher and starts watching docker for changes.
 func NewWatcher(dockerClient *client.Client) Watcher {
 	w := Watcher{client: dockerClient,
-		searchResultChan: make(chan []registry.SearchResult),
+		searchResultChan: make(chan []registry.SearchResult, 1),
 		mux:              &sync.Mutex{}}
 	return w
 }
@@ -34,7 +34,7 @@ func (w *Watcher) ClearSearch() {
 func (w *Watcher) Search(q string) {
 	if !w.searching {
 		w.mux.Lock()
-		w.ClearSearch()
+		//w.ClearSearch()
 		w.searching = true
 		//w.ClearSearch()
 		res, _ := w.client.ImageSearch(context.Background(), q, types.ImageSearchOptions{Limit: 3})
